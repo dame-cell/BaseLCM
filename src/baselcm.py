@@ -56,9 +56,9 @@ class TransformerDecoder(nn.Module):
 
   def forward(self,x):
     seq_len = x.size(1)
-    x = x+ self.pos_encoder[:,:seq_len]
+    x = x+ self.pos_encoder[:,:seq_len] 
     for layer in self.layers:
-      x = layer(x)
+      x = layer(x,x)
     return x
   
     
@@ -82,4 +82,24 @@ class BaseLCM(nn.Module):
       return x
 
 
+if __name__ == "__main__":
+    batch_size = 4
+    sequence_length = 10
+    input_dim = 1024  # SONAR embedding dimension 
+    hidden_dim = 512
+    num_heads = 8
+    num_layers = 6
+    ff_dim = 2048
+    output_dim = 1024  # Output embedding dimension (same as input)
 
+    # Random input to simulate SONAR embeddings
+    input_embeddings = torch.randn(batch_size, sequence_length, input_dim)
+
+    # Initialize and test Base-LCM
+    model = BaseLCM(input_dim, hidden_dim, num_heads, num_layers, ff_dim, output_dim)
+    output_embeddings = model(input_embeddings)
+    
+    print("Input shape:", input_embeddings.shape)
+    print("Output shape:", output_embeddings.shape)
+    
+    # After this we usually decode the output_embeddings 
