@@ -1,6 +1,11 @@
 # BaseLCM
 This will be the implementation of LCM but only the transformers-base LCM
 
+<p align="center">
+  <img src="src/lcm.png" alt="lcm" width="400"/>
+</p>
+
+From my understanding the LCM  basically focuses more on sentences rather than tokens and since it focuses more on sentences it is able to bypass the transformers quadratic scaling issue  with the increase in sequence length, but also since it works only on sentences it has its limitations like  cannot really focus  on the entire context but this seems to be useful for meta social media app where users typically communicate through short text
 
 
 # Citations 
