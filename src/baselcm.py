@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer
 from transformers.models.m2m_100.modeling_m2m_100 import M2M100Encoder
 
+# TO DO: Modify this to handle the texts correctly 
 class SonarEncoder:
   """
   SONAR Encoder: Encodes sentences into embeddings using the SONAR model.
@@ -108,26 +109,3 @@ class BaseLCM(nn.Module):
     x = self.postnet(x)
     return x
 
-# Testing the Base-LCM architecture
-def test_base_lcm():
-    batch_size = 4
-    sequence_length = 10
-    input_dim = 256  # SONAR embedding dimension (e.g., pre-encoded sentences)
-    hidden_dim = 512
-    num_heads = 8
-    num_layers = 6
-    ff_dim = 2048
-    output_dim = 256  # Output embedding dimension (same as input)
-
-    # Random input to simulate SONAR embeddings
-    input_embeddings = torch.randn(batch_size, sequence_length, input_dim)
-
-    # Initialize and test Base-LCM
-    model = BaseLCM(input_dim, hidden_dim, num_heads, num_layers, ff_dim, output_dim)
-    output_embeddings = model(input_embeddings)
-
-    print("Input shape:", input_embeddings.shape)
-    print("Output shape:", output_embeddings.shape)
-
-if __name__ == "__main__":
-    test_base_lcm()
