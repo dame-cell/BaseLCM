@@ -1,8 +1,32 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from transformers import AutoTokenizer
+from transformers.models.m2m_100.modeling_m2m_100 import M2M100Encoder
 
-
+class SonarEncoder:
+  """
+  SONAR Encoder: Encodes sentences into embeddings using the SONAR model.
+  """
+  def __init__(self,model_name='cointegrated/SONAR_200_text_encoder',device="cpu"):
+      self.encoder = M2M100Encoder.from_pretrained(model_name)
+      self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+      self.device = device
+      
+  def encode(self,texts,lang,norm=False):
+    # this works for both single texts and batches of text
+    if self.tokenizer is not None:
+      self.tokenizer.src_lang = lang
+      with torch.inference_mode():
+        batch = self.tokenizer(texts, return_tensors='pt', padding=True)
+        seq_embs = self.encoder(**batch).last_hidden_state
+        mask = batch.attention_mask
+        mean_emb = (seq_embs * mask.unsqueeze(-1)).sum(1) / mask.unsqueeze(-1).sum(1)
+        if norm:
+            mean_emb = torch.nn.functional.normalize(mean_emb)
+    return mean_emb
+  
+  
 class PreNet(nn.Module):
   """
   PreNet : Maps the input features  to the model's hidden dimesntion after normalizing the input features.
@@ -41,26 +65,25 @@ class PostNet(nn.Module):
         return x
       
 class TransformerDecoder(nn.Module):
-  """
-  A normal transformer Decoder 
-  """
-  def __init__(self,hidden_dim,num_heads,num_layers,ff_dim,dropout):
-    super(TransformerDecoder,self).__init__()
-    self.layers = nn.ModuleList([
+    def __init__(self,hidden_dim,num_heads,num_layers,ff_dim,dropout=0.1,max_seq_len=512):
+        super(TransformerDecoder,self).__init__()
+        self.layers = nn.ModuleList([
             nn.TransformerDecoderLayer(
                 d_model=hidden_dim, nhead=num_heads, dim_feedforward=ff_dim, dropout=dropout
             )
             for _ in range(num_layers)
         ])
-    self.pos_encoder = nn.Parameter(torch.zeros(1,512,hidden_dim))
+      
+        self.pos_encoder = nn.Parameter(torch.zeros(1, max_seq_len, hidden_dim))
 
-  def forward(self,x):
-    seq_len = x.size(1)
-    x = x+ self.pos_encoder[:,:seq_len] 
-    for layer in self.layers:
-      x = layer(x,x)
-    return x
-  
+    def forward(self,x):
+        seq_len = x.size(1)
+        # Ensure we don't exceed the input sequence length
+        pos_enc = self.pos_encoder[:, :seq_len, :]
+        x = x + pos_enc
+        for layer in self.layers:
+            x = layer(x,x)
+        return x
     
 class BaseLCM(nn.Module):
   """
@@ -76,21 +99,25 @@ class BaseLCM(nn.Module):
       self.postnet = PostNet(hidden_dim, output_dim)
 
   def forward(self, x):
-      x = self.prenet(x)
-      x = self.transformer_decoder(x)
-      x = self.postnet(x)
-      return x
 
+    # Add sequence dimension if not present
+    if len(x.shape) == 2:
+        x = x.unsqueeze(1)  # Shape becomes [batch_size, 1, input_dim]
+    x = self.prenet(x)
+    x = self.transformer_decoder(x)
+    x = self.postnet(x)
+    return x
 
-if __name__ == "__main__":
+# Testing the Base-LCM architecture
+def test_base_lcm():
     batch_size = 4
     sequence_length = 10
-    input_dim = 1024  # SONAR embedding dimension 
+    input_dim = 256  # SONAR embedding dimension (e.g., pre-encoded sentences)
     hidden_dim = 512
     num_heads = 8
     num_layers = 6
     ff_dim = 2048
-    output_dim = 1024  # Output embedding dimension (same as input)
+    output_dim = 256  # Output embedding dimension (same as input)
 
     # Random input to simulate SONAR embeddings
     input_embeddings = torch.randn(batch_size, sequence_length, input_dim)
@@ -98,8 +125,9 @@ if __name__ == "__main__":
     # Initialize and test Base-LCM
     model = BaseLCM(input_dim, hidden_dim, num_heads, num_layers, ff_dim, output_dim)
     output_embeddings = model(input_embeddings)
-    
+
     print("Input shape:", input_embeddings.shape)
     print("Output shape:", output_embeddings.shape)
-    
-    # After this we usually decode the output_embeddings 
+
+if __name__ == "__main__":
+    test_base_lcm()
