@@ -12,7 +12,7 @@ def compute_accuracy(predicted, target, threshold=0.5):
     accuracy = correct.mean().item()
     return accuracy
 
-class Datset:
+class Dataset:
   pass 
 
 class DataLoader:
