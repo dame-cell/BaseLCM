@@ -1,2 +1,4 @@
 sentencepiece
 spacy 
+wandb 
+tqdm 

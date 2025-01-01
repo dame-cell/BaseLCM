@@ -3,30 +3,54 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoTokenizer
 from transformers.models.m2m_100.modeling_m2m_100 import M2M100Encoder
+from tqdm.auto import tqdm
+import torch
 
-# TO DO: Modify this to handle the texts correctly 
 class SonarEncoder:
-  """
-  SONAR Encoder: Encodes sentences into embeddings using the SONAR model.
-  """
-  def __init__(self,model_name='cointegrated/SONAR_200_text_encoder',device="cpu"):
-      self.encoder = M2M100Encoder.from_pretrained(model_name)
-      self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-      self.device = device
-      
-  def encode(self,texts,lang,norm=False):
-    # this works for both single texts and batches of text
-    if self.tokenizer is not None:
-      self.tokenizer.src_lang = lang
-      with torch.inference_mode():
-        batch = self.tokenizer(texts, return_tensors='pt', padding=True)
-        seq_embs = self.encoder(**batch).last_hidden_state
-        mask = batch.attention_mask
-        mean_emb = (seq_embs * mask.unsqueeze(-1)).sum(1) / mask.unsqueeze(-1).sum(1)
-        if norm:
-            mean_emb = torch.nn.functional.normalize(mean_emb)
-    return mean_emb
-  
+    """
+    SONAR Encoder: Encodes sentences into embeddings using the SONAR model, with support for batching.
+    """
+    def __init__(self, model_name='cointegrated/SONAR_200_text_encoder', device="cpu"):
+        self.encoder = M2M100Encoder.from_pretrained(model_name).to(device)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.device = device
+
+    def encode(self, texts, lang, batch_size=32, norm=False):
+        """
+        Encode texts into embeddings with batching and optional normalization.
+
+        Args:
+            texts (List[str]): List of input texts to encode.
+            lang (str): Language code for the tokenizer.
+            batch_size (int): Number of texts to process in a single batch.
+            norm (bool): Whether to normalize the embeddings.
+
+        Returns:
+            torch.Tensor: Encoded embeddings.
+        """
+        if self.tokenizer is None or self.encoder is None:
+            raise ValueError("Tokenizer or encoder is not initialized.")
+
+        self.tokenizer.src_lang = lang
+        texts = texts if isinstance(texts, list) else [texts]
+
+        embeddings = []
+        with torch.inference_mode():
+            for i in tqdm(range(0, len(texts), batch_size), desc="Encoding Batches", unit="batch"):
+                batch_texts = texts[i:i + batch_size]
+                batch = self.tokenizer(batch_texts, return_tensors='pt', padding=True, truncation=True).to(self.device)
+                seq_embs = self.encoder(**batch).last_hidden_state
+                mask = batch.attention_mask
+
+                # Compute mean embedding for each sequence
+                mean_emb = (seq_embs * mask.unsqueeze(-1)).sum(1) / mask.unsqueeze(-1).sum(1)
+                if norm:
+                    mean_emb = torch.nn.functional.normalize(mean_emb, dim=1)
+
+                embeddings.append(mean_emb)
+
+        return torch.cat(embeddings, dim=0)
+
   
 class PreNet(nn.Module):
   """
@@ -103,7 +127,7 @@ class BaseLCM(nn.Module):
 
     # Add sequence dimension if not present
     if len(x.shape) == 2:
-        x = x.unsqueeze(1)  # Shape becomes [batch_size, 1, input_dim]
+        x = x.unsqueeze(1) 
     x = self.prenet(x)
     x = self.transformer_decoder(x)
     x = self.postnet(x)
