@@ -49,6 +49,7 @@ def train(args):
   if args.hf_data:
     print("We will use the Hugging Face dataset")
     df = datasets.load_dataset(args.hf_data,split='train')
+    df = df.select(range(1000))
     
     input_embeddings = encoder.encode(df[args.text_column],lang=args.lang,batch_size=args.batch_size)
     input_embeddings = input_embeddings.to(device)
