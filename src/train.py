@@ -48,6 +48,7 @@ def train(args):
   if args.hf_data:
     print("We will use the Hugging Face dataset")
     df = datasets.load_dataset(args.hf_data,split='train')
+    # just for testing 
     df = df.select(range(1000))
     
     input_embeddings = encoder.encode(df[args.text_column],lang=args.lang,batch_size=args.batch_size)
@@ -70,12 +71,13 @@ def train(args):
   optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
   criterion = nn.MSELoss()
   for epoch in range(args.epoch):
-    model.train()
-    optimizer.zero_grad()
-    output_embeddings = model(input_embeddings)
-    loss = criterion(output_embeddings, target_embeddings)
-    loss.backward()
-    optimizer.step()
+    for inputs in tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{args.epoch}", unit="batch"):
+      optimizer.zero_grad()
+      output_embeddings = model(inputs.to(device))
+      loss = criterion(output_embeddings, target_embeddings)
+      loss.backward()
+      optimizer.step()
+      
     
     accuracy = compute_accuracy(output_embeddings, target_embeddings)
     print(f"Epoch {epoch+1}/{args.epoch} Loss: {loss.item()} Accuracy: {accuracy}")
