@@ -42,8 +42,8 @@ def train(args):
   if args.wandb:
     wandb.init(project="base-lcm")
     wandb.config.update(args)
-  model = BaseLCM(args.input_dim, args.hidden_dim, args.num_heads, args.num_layers, args.ff_dim, args.output_dim,device=device)
-  encoder = SonarEncoder()
+  model = BaseLCM(args.input_dim, args.hidden_dim, args.num_heads, args.num_layers, args.ff_dim, args.output_dim)
+  encoder = SonarEncoder(device=device)
   
   if args.hf_data:
     print("We will use the Hugging Face dataset")
