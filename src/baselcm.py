@@ -97,24 +97,35 @@ class PostNet(nn.Module):
         return x
       
 class TransformerDecoder(nn.Module):
-    def __init__(self,hidden_dim,num_heads,num_layers,ff_dim,dropout=0.1,max_seq_len=512):
-        super(TransformerDecoder,self).__init__()
+    def __init__(self, hidden_dim, num_heads, num_layers, ff_dim, dropout=0.1, max_seq_len=512):
+        super(TransformerDecoder, self).__init__()
+        # Add mask to ensure causal attention
+        self.register_buffer(
+            "causal_mask",
+            torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1).bool()
+        )
+        
         self.layers = nn.ModuleList([
             nn.TransformerDecoderLayer(
-                d_model=hidden_dim, nhead=num_heads, dim_feedforward=ff_dim, dropout=dropout
+                d_model=hidden_dim,
+                nhead=num_heads,
+                dim_feedforward=ff_dim,
+                dropout=dropout,
+                batch_first=True  
             )
             for _ in range(num_layers)
         ])
-      
+        
         self.pos_encoder = nn.Parameter(torch.zeros(1, max_seq_len, hidden_dim))
-
-    def forward(self,x):
+        
+    def forward(self, x):
         seq_len = x.size(1)
-        # Ensure we don't exceed the input sequence length
+        # Add positional encodings
         pos_enc = self.pos_encoder[:, :seq_len, :]
         x = x + pos_enc
+        mask = self.causal_mask[:seq_len, :seq_len]
         for layer in self.layers:
-            x = layer(x,x)
+            x = layer(x, x, tgt_mask=mask)
         return x
     
 class BaseLCM(nn.Module):
