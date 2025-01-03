@@ -132,4 +132,3 @@ class BaseLCM(nn.Module):
     x = self.transformer_decoder(x)
     x = self.postnet(x)
     return x
-
