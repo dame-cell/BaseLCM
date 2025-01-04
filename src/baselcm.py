@@ -7,27 +7,12 @@ from tqdm.auto import tqdm
 import torch
 
 class SonarEncoder:
-    """
-    SONAR Encoder: Encodes sentences into embeddings using the SONAR model, with support for batching.
-    """
     def __init__(self, model_name='cointegrated/SONAR_200_text_encoder', device="cpu"):
         self.encoder = M2M100Encoder.from_pretrained(model_name).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.device = device
 
     def encode(self, texts, lang, batch_size=32, norm=False):
-        """
-        Encode texts into embeddings with batching and optional normalization.
-
-        Args:
-            texts (List[str]): List of input texts to encode.
-            lang (str): Language code for the tokenizer.
-            batch_size (int): Number of texts to process in a single batch.
-            norm (bool): Whether to normalize the embeddings.
-
-        Returns:
-            torch.Tensor: Encoded embeddings.
-        """
         if self.tokenizer is None or self.encoder is None:
             raise ValueError("Tokenizer or encoder is not initialized.")
 
@@ -52,36 +37,19 @@ class SonarEncoder:
         return torch.cat(embeddings, dim=0)
 
   
-class RobustScaler:
-    def __init__(self):
-        self.median = None
-        self.iqr = None
-    
-    def fit(self, embeddings):
-        # Calculate median and IQR along each dimension
-        self.median = torch.median(embeddings, dim=0)[0]
-        q75, q25 = torch.quantile(embeddings, torch.tensor([0.75, 0.25]), dim=0)
-        self.iqr = q75 - q25
-        # Avoid division by zero
-        self.iqr = torch.where(self.iqr == 0, torch.ones_like(self.iqr), self.iqr)
-    
-    def normalize(self, x):
-        return (x - self.median) / self.iqr
-    
-    def denormalize(self, x):
-        return self.median + (x * self.iqr)
-
 class PreNet(nn.Module):
+
     def __init__(self, input_dim, hidden_dim):
         super(PreNet, self).__init__()
         self.linear = nn.Linear(input_dim, hidden_dim)
-        self.scaler = RobustScaler()
-    
-    def fit_scaler(self, sample_embeddings):
-        self.scaler.fit(sample_embeddings)
-    
+        self.scaler_mean = 0.0 
+        self.scaler_std = 1.0   
+
+    def normalize(self, x):
+        return (x - self.scaler_mean) / self.scaler_std
+
     def forward(self, x):
-        x = self.scaler.normalize(x)
+        x = self.normalize(x)
         x = self.linear(x)
         return x
 
@@ -89,11 +57,15 @@ class PostNet(nn.Module):
     def __init__(self, hidden_dim, output_dim):
         super(PostNet, self).__init__()
         self.linear = nn.Linear(hidden_dim, output_dim)
-        self.scaler = None  # Will be shared with PreNet
-    
+        self.scaler_mean = 0.0  
+        self.scaler_std = 1.0   
+
+    def denormalize(self, x):
+        return x * self.scaler_std + self.scaler_mean
+
     def forward(self, x):
         x = self.linear(x)
-        x = self.scaler.denormalize(x)
+        x = self.denormalize(x)
         return x
       
 class TransformerDecoder(nn.Module):
