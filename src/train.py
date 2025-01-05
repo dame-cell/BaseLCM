@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--text_column', type=str, default="text", help="Text column in the dataset")
     parser.add_argument('--lang', type=str, default="en", help="Language for the dataset")
     parser.add_argument('--weight_decay', type=float, default=1e-4, help="Weight decay (L2 regularization factor)")
+    parser.add_argument('--data_sample', type=int, default=1000, help="How much sample to choose from the entire datasets")
     return parser.parse_args()
   
 
@@ -67,7 +68,7 @@ def train(args):
         return [sent.text for sent in doc.sents]
 
     # Integrate sentence splitting into the encoding process
-    df = load_dataset(args.hf_data, split='train').select(range(10000))  # For testing
+    df = load_dataset(args.hf_data, split='train').select(range(args.data_sample))  # For testing
 
     # Process the text column by splitting into sentences
     print("splitting the corpus into sentences")
