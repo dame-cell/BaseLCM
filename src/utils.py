@@ -23,21 +23,25 @@ def process_batch(texts: List[str], nlp, batch_size: int = 1000) -> List[str]:
         sentences.extend([sent.text.strip() for sent in doc.sents])
     return sentences
 
+# Move process_chunk outside to make it picklable
+def process_chunk(chunk: List[str], batch_size: int = 1000) -> List[str]:
+    """Process a chunk of texts"""
+    nlp = setup_spacy()
+    return process_batch(chunk, nlp, batch_size)
+
 def parallel_process_texts(texts: List[str], n_workers: int = 4, batch_size: int = 1000) -> List[str]:
     """Process texts in parallel using multiple workers"""
     # Split texts into roughly equal chunks for parallel processing
-    chunk_size = len(texts) // n_workers
+    chunk_size = max(len(texts) // n_workers, 1)  # Ensure chunk_size is at least 1
     chunks = [texts[i:i + chunk_size] for i in range(0, len(texts), chunk_size)]
-    
-    def process_chunk(chunk):
-        nlp = setup_spacy()
-        return process_batch(chunk, nlp, batch_size)
     
     sentences = []
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        # Create a list of batch_size arguments for each chunk
+        batch_sizes = [batch_size] * len(chunks)
         # Process chunks in parallel and show progress
         results = list(tqdm(
-            executor.map(process_chunk, chunks),
+            executor.map(process_chunk, chunks, batch_sizes),
             total=len(chunks),
             desc="Processing text chunks"
         ))
