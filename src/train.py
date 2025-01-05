@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import wandb 
 import argparse  
 from baselcm import BaseLCM , SonarEncoder
-from utils import GloveDataset , add_noise_to_embeddings 
+from utils import GloveDataset , add_noise_to_embeddings , parallel_process_texts
 from tqdm.auto import tqdm 
 from datasets import load_dataset
 
@@ -59,26 +59,19 @@ def train(args):
 
     encoder = SonarEncoder(device=device)
 
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
-
-    # Function to split text into sentences
-    def split_into_sentences(text):
-        doc = nlp(text)
-        return [sent.text for sent in doc.sents]
 
     # Integrate sentence splitting into the encoding process
     df = load_dataset(args.hf_data, split='train').select(range(args.data_sample))  # For testing
 
-    # Process the text column by splitting into sentences
-    print("splitting the corpus into sentences")
-    processed_texts = []
-    for text in tqdm(df[args.text_column], desc="Processing Texts", unit="text"):
-      sentences = split_into_sentences(text)
-      processed_texts.extend(sentences)
-
-    print("number of sentences,",len(processed_texts))
-
+    # Process texts in parallel
+    print("Splitting the corpus into sentences...")
+    processed_texts = parallel_process_texts(
+        df[args.text_column],
+        n_workers=2,  
+        batch_size=1000
+    )
+    
+    print(f"Number of sentences: {len(processed_texts)}")
     # Encode the processed sentences
     input_embeddings = encoder.encode(
         processed_texts, lang=args.lang, batch_size=args.batch_size
