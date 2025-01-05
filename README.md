@@ -22,7 +22,6 @@ ones
 1) Post-net : which maps the hidden representations produced by the Transformer-Decoder back to the original embedding space
   
 
-
 The workflow is as follows:
 1) First we download the dataset any dataset from hugginface 
 2) We then split those chunks of texts into sentences using spacy 

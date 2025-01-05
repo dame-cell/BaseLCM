@@ -68,7 +68,7 @@ def train(args):
         return [sent.text for sent in doc.sents]
 
     # Integrate sentence splitting into the encoding process
-    df = load_dataset(args.hf_data, split='train').select(range(10000))  # For testing
+    df = load_dataset(args.hf_data, split='train').select(range(args.data_sample))  # For testing
 
     # Process the text column by splitting into sentences
     print("splitting the corpus into sentences")
