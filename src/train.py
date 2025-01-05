@@ -58,9 +58,9 @@ def train(args):
 
     encoder = SonarEncoder(device=device)
 
+ 
     import spacy
     nlp = spacy.load("en_core_web_sm")
-
     # Function to split text into sentences
     def split_into_sentences(text):
         doc = nlp(text)
