@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--text_column', type=str, default="text", help="Text column in the dataset")
     parser.add_argument('--lang', type=str, default="en", help="Language for the dataset")
     parser.add_argument('--weight_decay', type=float, default=1e-4, help="Weight decay (L2 regularization factor)")
+    parser.add_argument('--data_sample', type=int, default=1000, help="How much sample to choose from the entire datasets")
     return parser.parse_args()
   
 
@@ -71,13 +72,13 @@ def train(args):
 
     # Process the text column by splitting into sentences
     print("splitting the corpus into sentences")
+    
     processed_texts = []
     for text in tqdm(df[args.text_column], desc="Processing Texts", unit="text"):
       sentences = split_into_sentences(text)
       processed_texts.extend(sentences)
 
     print("number of sentences,",len(processed_texts))
-
     # Encode the processed sentences
     input_embeddings = encoder.encode(
         processed_texts, lang=args.lang, batch_size=args.batch_size

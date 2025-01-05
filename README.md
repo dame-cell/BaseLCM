@@ -23,6 +23,13 @@ ones
   
 
 
+The workflow is as follows:
+1) First we download the dataset any dataset from hugginface 
+2) We then split those chunks of texts into sentences using spacy 
+3) Then we pass those sentences to the sonar encoder 
+4) We then add noise to those embeddings provided by the sonar model 
+5) We then train the model after this 
+
 ### Loss Function and Training Objective
 
 The **Loss Function** in Base-LCM is the **Mean Squared Error (MSE)**, which measures the difference between the predicted next concept embedding and the true next concept embedding. The model is trained to minimize this loss, effectively learning to predict the next concept in a sequence.
