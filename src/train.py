@@ -56,7 +56,7 @@ def train(args):
         ff_dim=args.ff_dim, 
         output_dim=args.output_dim
     ).to(device)
-
+    
     encoder = SonarEncoder(device=device)
 
  
@@ -83,8 +83,10 @@ def train(args):
     input_embeddings = encoder.encode(
         processed_texts, lang=args.lang, batch_size=args.batch_size
     ).to(device)
-
     
+    del encoder 
+    # remove cache and any excess memory from gpu 
+    torch.cuda.empty_cache()
     train_dataset = GloveDataset(input_embeddings, args.sequence_length, args.batch_size)
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     
