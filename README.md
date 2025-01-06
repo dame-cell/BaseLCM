@@ -58,6 +58,9 @@ python3 src/train.py --hf_data beomi/fineweb-edu-fortified-mini \
                      --data_sample 1000
 
 ```
+### To Do:
+1) Make the process for encoding the sentences using Sonar faster maybe adding support for multi-gpu
+2) Add the decoder Sonar so that we can test the generation
 
 # Citations 
 
